@@ -11,13 +11,13 @@ namespace EmmyLuaSnippetGenerator
     {
         public string GeneratePath;
         public string TargetNamespacesStr;
-        public bool AddCSPrefixToFields;
+        public bool GenerateCSAlias;
 
         public static string SavePath => AppDomain.CurrentDomain.BaseDirectory + @"\EmmyLuaSnippetToolData\config.xml";
 
-        public override readonly string ToString()
+        public readonly string[] GetTargetNamespaces()
         {
-            return $"GeneratePath: {GeneratePath}, SupportNameSpacesStr: {TargetNamespacesStr}, AddCSPrefixToFields: {AddCSPrefixToFields}";
+            return TargetNamespacesStr.Split(' ');
         }
     }
 
@@ -62,7 +62,7 @@ namespace EmmyLuaSnippetGenerator
             GUILayout.Space(10);
 
             GUILayout.Label("为生成的类型字段添加CS.前缀");
-            _options.AddCSPrefixToFields = EditorGUILayout.Toggle(_options.AddCSPrefixToFields);
+            _options.GenerateCSAlias = EditorGUILayout.Toggle(_options.GenerateCSAlias);
             
             GUILayout.Space(20);
 

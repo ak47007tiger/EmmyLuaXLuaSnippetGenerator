@@ -12,14 +12,12 @@ using UnityEngine;
 
 namespace EmmyLuaSnippetGenerator
 {
+    /// <summary>
+    /// 该文件只用来给ide进行lua类型提示的,不要在运行时require该文件或者打包到版本中.
+    /// </summary>
     public static class LuaTypeGenerator
     {
-        /// <summary>
-        /// 该文件只用来给ide进行lua类型提示的,不要在运行时require该文件或者打包到版本中.
-        /// </summary>
-        private static string TypeDefineFilePath { get; set; }
-        private static string[] SupportNameSpaceList { get; set; }
-        private static bool AddCSPrefixToField { get; set; } = false;
+        private static SettingOptions _options;
 
         private static readonly HashSet<Type> luaNumberTypeSet = new HashSet<Type>
         {
@@ -70,15 +68,9 @@ namespace EmmyLuaSnippetGenerator
         [MenuItem("LuaType/生成EmmyLua类型注解")]
         public static void GenerateEmmyTypeFiles()
         {
-            if (!XmlHelper.TryLoadConfig(SettingOptions.SavePath, out SettingOptions settings))
+            if (!XmlHelper.TryLoadConfig(SettingOptions.SavePath, out SettingOptions loaded))
             {
                 Debug.LogError("[LuaTypeUtility] 错误, 设置文件加载失败. 请先在[设置]选项内设置属性.");
-                return;
-            }
-
-            if (!TryParseSettings(settings))
-            {
-                Debug.LogError("[LuaTypeUtility] 错误, 设置文件解析失败.");
                 return;
             }
             
@@ -86,6 +78,8 @@ namespace EmmyLuaSnippetGenerator
             {
                 return;
             }
+
+            _options = loaded;
 
             var set = CollectAllExportType();
             exportTypeList.AddRange(set);
@@ -101,43 +95,15 @@ namespace EmmyLuaSnippetGenerator
         [MenuItem("LuaType/清除EmmyLua类型注解")]
         public static void ClearEmmyTypeFiles()
         {
-            if (File.Exists(TypeDefineFilePath))
+            if (File.Exists(_options.GeneratePath))
             {
-                File.Delete(TypeDefineFilePath);
+                File.Delete(_options.GeneratePath);
                 Debug.Log("Clear Lua type snippet Complete!");
             }
             else
             {
                 Debug.LogWarning("文件不存在");
             }
-        }
-
-        private static bool TryParseSettings(SettingOptions setting)
-        {
-            if (string.IsNullOrEmpty(setting.GeneratePath))
-            {
-                Debug.LogError("[LuaTypeUtility] 设置参数错误: 生成路径为空.");
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(setting.TargetNamespacesStr))
-            {
-                Debug.LogError("[LuaTypeUtility] 设置参数错误: 命名空间为空.");
-                return false;
-            }
-
-            try
-            {
-                TypeDefineFilePath = setting.GeneratePath;
-                SupportNameSpaceList = setting.TargetNamespacesStr.Split(' ');
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[LuaTypeUtility] 设置解析时错误: {e.Message}");
-                return false;
-            }
-
-            return true;
         }
 
         private static HashSet<Type> CollectAllExportType()
@@ -162,7 +128,9 @@ namespace EmmyLuaSnippetGenerator
 
         public static bool IsExportType(Type item)
         {
-            for (int i = 0; i < SupportNameSpaceList.Length; i++)
+            var targetNamespaces = _options.GetTargetNamespaces();
+
+            for (int i = 0; i < targetNamespaces.Length; i++)
             {
                 string itemNamespace = item.Namespace;
                 if (string.IsNullOrEmpty(itemNamespace))
@@ -186,7 +154,7 @@ namespace EmmyLuaSnippetGenerator
                     {
                         return false;
                     }
-                    if (itemNamespace.StartsWith(SupportNameSpaceList[i]))
+                    if (itemNamespace.StartsWith(targetNamespaces[i]))
                     {
                         return true;
                     }
@@ -250,9 +218,11 @@ namespace EmmyLuaSnippetGenerator
             sb.AppendLine(string.Format("---@class {0}", "CS"));
             sb.AppendLine("CS = {}");
 
-            for (int i = 0; i < SupportNameSpaceList.Length; i++)
+            var targetNamespaces = _options.GetTargetNamespaces();
+
+            for (int i = 0; i < targetNamespaces.Length; i++)
             {
-                string tableName = string.Format("CS.{0}", SupportNameSpaceList[i]);
+                string tableName = string.Format("CS.{0}", targetNamespaces[i]);
                 sb.AppendLine(string.Format("---@class {0}", tableName));
                 sb.AppendLine(string.Format("{0} = {{}}", tableName));
                 sb.AppendLine("");
@@ -266,7 +236,7 @@ namespace EmmyLuaSnippetGenerator
 
                 foreach (bool withCSPrefix in TrueAndFalse)
                 {
-                    AddCSPrefixToField = withCSPrefix;
+                    _options.GenerateCSAlias = withCSPrefix;
                     WriteClassDefine(typeInst);
                     WriteClassFieldDefine(typeInst);
                     sb.AppendLine(string.Format("{0} = {{}}", typeInst.ToLuaTypeName().ReplaceDotOrPlusWithUnderscore()));
@@ -280,7 +250,7 @@ namespace EmmyLuaSnippetGenerator
                 sb.AppendLine("");
             }
 
-            File.WriteAllText(TypeDefineFilePath, sb.ToString());
+            File.WriteAllText(_options.GeneratePath, sb.ToString());
         }
 
         #region TypeDefineFileGenerator
@@ -665,7 +635,7 @@ namespace EmmyLuaSnippetGenerator
 
         public static string ToLuaTypeName(this Type type)
         {
-            string prefix = AddCSPrefixToField ? "CS." : "";
+            string prefix = _options.GenerateCSAlias ? "CS." : "";
 
             if (type == null)
             {
