@@ -6,28 +6,22 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using NetFile;
 using UnityEditor;
 using UnityEngine;
 
-namespace EmmyTypeGenerator
+namespace EmmyLuaSnippetGenerator
 {
-    public static class Generator
+    public static class LuaTypeGenerator
     {
         /// <summary>
         /// 该文件只用来给ide进行lua类型提示的,不要在运行时require该文件或者打包到版本中.
         /// </summary>
-        private static string TypeDefineFilePath
-        {
-            get { return Application.dataPath + "/TGame/Assets/lua_code/_snippet/EmmyTypeDefine.lua"; }
-        }
+        private static string TypeDefineFilePath { get; set; }
+        private static string[] SupportNameSpaceList { get; set; }
+        private static bool AddCSPrefixToField { get; set; } = false;
 
-        private static string[] supportNameSpaceList = new string[]{
-                "Unity",
-                "DC",
-                "DG",
-            };
-
-        private static HashSet<Type> luaNumberTypeSet = new HashSet<Type>
+        private static readonly HashSet<Type> luaNumberTypeSet = new HashSet<Type>
         {
             typeof(byte),
             typeof(sbyte),
@@ -40,8 +34,7 @@ namespace EmmyTypeGenerator
             typeof(float),
             typeof(double)
         };
-
-        private static HashSet<string> luaKeywordSet = new HashSet<string>
+        private static readonly HashSet<string> luaKeywordSet = new HashSet<string>
         {
             "and",
             "break",
@@ -65,17 +58,35 @@ namespace EmmyTypeGenerator
             "until",
             "while"
         };
+        private static readonly bool[] TrueAndFalse = new bool[] { false, true };
 
-        public static StringBuilder sb = new StringBuilder(1024);
-        private static StringBuilder tempSb = new StringBuilder(1024);
-        private static List<Type> exportTypeList = new List<Type>();
+        public static readonly StringBuilder sb = new StringBuilder(1024);
+        private static readonly StringBuilder tempSb = new StringBuilder(1024);
+        private static readonly List<Type> exportTypeList = new List<Type>();
 
-        private static Dictionary<Type, List<MethodInfo>>
-            extensionMethodsDic = new Dictionary<Type, List<MethodInfo>>();
+        private static readonly Dictionary<Type, List<MethodInfo>>
+        extensionMethodsDic = new Dictionary<Type, List<MethodInfo>>();
 
-        [MenuItem("DC/Lua/EmmyTypeGenerate")]
+        [MenuItem("LuaType/生成EmmyLua类型注解")]
         public static void GenerateEmmyTypeFiles()
         {
+            if (!XmlHelper.TryLoadConfig(SettingOptions.SavePath, out SettingOptions settings))
+            {
+                Debug.LogError("[LuaTypeUtility] 错误, 设置文件加载失败. 请先在[设置]选项内设置属性.");
+                return;
+            }
+
+            if (!TryParseSettings(settings))
+            {
+                Debug.LogError("[LuaTypeUtility] 错误, 设置文件解析失败.");
+                return;
+            }
+            
+            if (!EditorUtility.DisplayDialog("Lua Type", "确定按照当前的设置生成Lua类型注解?", "Yes", "No"))
+            {
+                return;
+            }
+
             var set = CollectAllExportType();
             exportTypeList.AddRange(set);
 
@@ -84,18 +95,49 @@ namespace EmmyTypeGenerator
             GenerateTypeDefines();
 
             AssetDatabase.Refresh();
-            Debug.Log("Generate lau snippet Complete!");
+            Debug.Log("Generate Lua snippet Complete!");
         }
 
-        [MenuItem("DC/Lua/TestGene")]
-        public static void Test()
+        [MenuItem("LuaType/清除EmmyLua类型注解")]
+        public static void ClearEmmyTypeFiles()
         {
-            var v3Type = typeof(Vector3);
-            var assembly = v3Type.Assembly;
-            HashSet<Type> set = CollectAllExportType();
-            var array = set.ToArray();
-            var hasV3 = set.Contains(v3Type);
-            var export = IsExportType(v3Type);
+            if (File.Exists(TypeDefineFilePath))
+            {
+                File.Delete(TypeDefineFilePath);
+                Debug.Log("Clear Lua type snippet Complete!");
+            }
+            else
+            {
+                Debug.LogWarning("文件不存在");
+            }
+        }
+
+        private static bool TryParseSettings(SettingOptions setting)
+        {
+            if (string.IsNullOrEmpty(setting.GeneratePath))
+            {
+                Debug.LogError("[LuaTypeUtility] 设置参数错误: 生成路径为空.");
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(setting.TargetNamespacesStr))
+            {
+                Debug.LogError("[LuaTypeUtility] 设置参数错误: 命名空间为空.");
+                return false;
+            }
+
+            try
+            {
+                TypeDefineFilePath = setting.GeneratePath;
+                SupportNameSpaceList = setting.TargetNamespacesStr.Split(' ');
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[LuaTypeUtility] 设置解析时错误: {e.Message}");
+                return false;
+            }
+
+            return true;
         }
 
         private static HashSet<Type> CollectAllExportType()
@@ -120,7 +162,7 @@ namespace EmmyTypeGenerator
 
         public static bool IsExportType(Type item)
         {
-            for (int i = 0; i < supportNameSpaceList.Length; i++)
+            for (int i = 0; i < SupportNameSpaceList.Length; i++)
             {
                 string itemNamespace = item.Namespace;
                 if (string.IsNullOrEmpty(itemNamespace))
@@ -144,7 +186,7 @@ namespace EmmyTypeGenerator
                     {
                         return false;
                     }
-                    if (itemNamespace.StartsWith(supportNameSpaceList[i]))
+                    if (itemNamespace.StartsWith(SupportNameSpaceList[i]))
                     {
                         return true;
                     }
@@ -198,6 +240,8 @@ namespace EmmyTypeGenerator
         private static void GenerateTypeDefines()
         {
             sb.Clear();
+            sb.AppendLine("---@meta CSharp");
+            sb.AppendLine("");
             sb.AppendLine("---@class NotExportType @表明该类型未导出");
             sb.AppendLine("");
             sb.AppendLine("---@class NotExportEnum @表明该枚举未导出");
@@ -205,23 +249,14 @@ namespace EmmyTypeGenerator
 
             sb.AppendLine(string.Format("---@class {0}", "CS"));
             sb.AppendLine("CS = {}");
-            // sb.AppendLine(string.Format("---@class {0}", "Unity"));
-            // sb.AppendLine("Unity = {}");
-            // sb.AppendLine(string.Format("---@class {0}", "UnityEditor"));
-            // sb.AppendLine("UnityEditor = {}");
 
-            // var nameSpaceSet = new HashSet<string>();
-            // for (int i = 0; i < exportTypeList.Count; i++)
-            // {
-            //     Type type = exportTypeList[i];
-            //     if (!nameSpaceSet.Contains(type.Namespace))
-            //     {
-            //         nameSpaceSet.Add(type.Namespace);
-            //         sb.AppendLine(string.Format("---@class {0}", type.Namespace));
-            //         sb.AppendLine(string.Format("{0} = {{}}", type.Namespace));
-            //     }
-            // }
-            // sb.AppendLine();
+            for (int i = 0; i < SupportNameSpaceList.Length; i++)
+            {
+                string tableName = string.Format("CS.{0}", SupportNameSpaceList[i]);
+                sb.AppendLine(string.Format("---@class {0}", tableName));
+                sb.AppendLine(string.Format("{0} = {{}}", tableName));
+                sb.AppendLine("");
+            }
 
             for (int i = 0; i < exportTypeList.Count; i++)
             {
@@ -229,12 +264,18 @@ namespace EmmyTypeGenerator
 
                 keepStringTypeName = typeInst == typeof(string);
 
-                WriteClassDefine(typeInst);
-                WriteClassFieldDefine(typeInst);
-                sb.AppendLine(string.Format("{0} = {{}}", typeInst.ToLuaTypeName().ReplaceDotOrPlusWithUnderscore()));
+                foreach (bool withCSPrefix in TrueAndFalse)
+                {
+                    AddCSPrefixToField = withCSPrefix;
+                    WriteClassDefine(typeInst);
+                    WriteClassFieldDefine(typeInst);
+                    sb.AppendLine(string.Format("{0} = {{}}", typeInst.ToLuaTypeName().ReplaceDotOrPlusWithUnderscore()));
 
-                WriteClassConstructorDefine(typeInst);
-                WriteClassMethodDefine(typeInst);
+                    WriteClassConstructorDefine(typeInst);
+                    WriteClassMethodDefine(typeInst);
+
+                    sb.AppendLine("");
+                }
 
                 sb.AppendLine("");
             }
@@ -328,7 +369,11 @@ namespace EmmyTypeGenerator
                     continue;
                 }
 
-                WriteOverloadMethodCommentDecalre(ctorInfo.GetParameters(), type);
+                WriteOverloadMethodCommentDecalre(
+                    parameterInfos: ctorInfo.GetParameters(), 
+                    returnType: type, 
+                    classType: null // constructor has no "class type", although it's a member of the class
+                );
             }
 
             ConstructorInfo lastCtorInfo = constructorInfos[constructorInfos.Length - 1];
@@ -410,7 +455,11 @@ namespace EmmyTypeGenerator
                 //前面的方法都是overload
                 for (int i = 0; i < methodInfoList.Count - 1; i++)
                 {
-                    WriteOverloadMethodCommentDecalre(methodInfoList[i].GetParameters(), methodInfoList[i].ReturnType);
+                    WriteOverloadMethodCommentDecalre(
+                        parameterInfos: methodInfoList[i].GetParameters(), 
+                        returnType: methodInfoList[i].ReturnType,
+                        classType: type
+                    );
                 }
 
                 MethodInfo lastMethodInfo = methodInfoList[methodInfoList.Count - 1];
@@ -422,7 +471,11 @@ namespace EmmyTypeGenerator
             WriteExtensionMethodFunctionDecalre(type);
         }
 
-        public static void WriteOverloadMethodCommentDecalre(ParameterInfo[] parameterInfos, Type returnType)
+        public static void WriteOverloadMethodCommentDecalre(
+            ParameterInfo[] parameterInfos,
+            Type returnType,
+            Type classType // if null, means static method
+        )
         {
             List<ParameterInfo> outOrRefParameterInfoList = new List<ParameterInfo>();
 
@@ -447,14 +500,23 @@ namespace EmmyTypeGenerator
                     parameterTypeName = parameterInfo.ParameterType.GetElementType().ToLuaTypeName();
                 }
 
+                // write self parameter
+                if (i == 0 && classType != null)
+                {
+                    string selfParameterName = "self";
+                    string selfParameterTypeName = classType.ToLuaTypeName();
+                    tempSb.Append(string.Format("{0}: {1}, ", selfParameterName, selfParameterTypeName));
+                }
+
+                // write other parameters
                 parameterName = EscapeLuaKeyword(parameterName);
                 if (i == parameterInfos.Length - 1)
                 {
-                    tempSb.Append(string.Format("{0} : {1}", parameterName, parameterTypeName));
+                    tempSb.Append(string.Format("{0}: {1}", parameterName, parameterTypeName));
                 }
                 else
                 {
-                    tempSb.Append(string.Format("{0} : {1}, ", parameterName, parameterTypeName));
+                    tempSb.Append(string.Format("{0}: {1}, ", parameterName, parameterTypeName));
                 }
             }
 
@@ -603,20 +665,12 @@ namespace EmmyTypeGenerator
 
         public static string ToLuaTypeName(this Type type)
         {
+            string prefix = AddCSPrefixToField ? "CS." : "";
+
             if (type == null)
             {
                 return "NullType";
             }
-
-            // if (!TypeIsExport(type))
-            // {
-            //     if (type.IsEnum)
-            //     {
-            //         return "NotExportEnum";
-            //     }
-
-            //     return "NotExportType";
-            // }
 
             if (luaNumberTypeSet.Contains(type))
             {
@@ -636,12 +690,12 @@ namespace EmmyTypeGenerator
             string typeName = type.FullName;
             if (typeName == null)
             {
-                return "CS." + type.ToString().EscapeGenericTypeSuffix();
+                return prefix + type.ToString().EscapeGenericTypeSuffix();
             }
 
             if (type.IsEnum)
             {
-                return "CS." + type.FullName.EscapeGenericTypeSuffix().Replace("+", ".");
+                return prefix + type.FullName.EscapeGenericTypeSuffix().Replace("+", ".");
             }
 
             //去除泛型后缀
@@ -651,25 +705,25 @@ namespace EmmyTypeGenerator
             if (bracketIndex > 0)
             {
                 typeName = typeName.Substring(0, bracketIndex);
-                Type[] genericTypes = type.GetGenericArguments();
-                for (int i = 0; i < genericTypes.Length; i++)
-                {
-                    Type genericArgumentType = genericTypes[i];
-                    string genericArgumentTypeName;
-                    if (CSharpTypeNameDic.ContainsKey(genericArgumentType))
-                    {
-                        genericArgumentTypeName = CSharpTypeNameDic[genericArgumentType];
-                    }
-                    else
-                    {
-                        genericArgumentTypeName = genericArgumentType.ToLuaTypeName();
-                    }
+                // Type[] genericTypes = type.GetGenericArguments();
+                // for (int i = 0; i < genericTypes.Length; i++)
+                // {
+                //     Type genericArgumentType = genericTypes[i];
+                //     string genericArgumentTypeName;
+                //     if (CSharpTypeNameDic.ContainsKey(genericArgumentType))
+                //     {
+                //         genericArgumentTypeName = CSharpTypeNameDic[genericArgumentType];
+                //     }
+                //     else
+                //     {
+                //         genericArgumentTypeName = genericArgumentType.ToLuaTypeName();
+                //     }
 
-                    typeName = typeName + "_" + genericArgumentTypeName.ReplaceDotOrPlusWithUnderscore();
-                }
+                //     typeName = typeName + "_" + genericArgumentTypeName.ReplaceDotOrPlusWithUnderscore();
+                // }
             }
 
-            return "CS." + typeName;
+            return prefix + typeName;
         }
 
         private static Dictionary<Type, string> CSharpTypeNameDic = new Dictionary<Type, string>
@@ -707,8 +761,16 @@ namespace EmmyTypeGenerator
 
         public static string EscapeGenericTypeSuffix(this string s)
         {
-            var reg = "[^a-zA-Z0-9\\._+]";
-            string result = Regex.Replace(s, reg, "").Replace("+", ".");
+            string result = Regex.Replace(s , @"\`[0-9]+", "");
+
+            // int index = result.IndexOf("_");
+            // if (index != -1)
+            // {
+            //     result = result[..index];
+            // }
+
+            result = result.Replace("+", ".");
+
             return result;
         }
 
