@@ -56,7 +56,6 @@ namespace EmmyLuaSnippetGenerator
             "until",
             "while"
         };
-        private static readonly bool[] TrueAndFalse = new bool[] { false, true };
 
         public static readonly StringBuilder sb = new StringBuilder(1024);
         private static readonly StringBuilder tempSb = new StringBuilder(1024);
@@ -215,10 +214,7 @@ namespace EmmyLuaSnippetGenerator
             sb.AppendLine("---@class NotExportEnum @表明该枚举未导出");
             sb.AppendLine("");
 
-            // xLua Define
-            sb.AppendLine(string.Format("---@class {0}", "CS"));
-            sb.AppendLine("CS = {}");
-            sb.AppendLine("");
+            WriteXLuaDefine();
 
             var targetNamespaces = _options.GetTargetNamespaces();
 
@@ -263,6 +259,21 @@ namespace EmmyLuaSnippetGenerator
         }
 
         #region TypeDefineFileGenerator
+
+        // xLua相关的定义单独写
+        public static void WriteXLuaDefine()
+        {
+            // CS table
+            sb.AppendLine(string.Format("---@class {0}", "CS"));
+            sb.AppendLine("CS = {}");
+            sb.AppendLine("");
+
+            // typeof function
+            sb.AppendLine(@"---@param obj any");
+            sb.AppendLine(@"---@return CS.System.Type");
+            sb.AppendLine(@"function typeof(obj) end");
+            sb.AppendLine("");
+        }
 
         public static void WriteClassDefine(Type type)
         {
@@ -328,6 +339,7 @@ namespace EmmyLuaSnippetGenerator
         public static void WriteClassAliasDefine(Type type)
         {
             sb.AppendLine(string.Format("---@alias {0} {1}", type.ToLuaTypeName(addCSPrefix: false), type.ToLuaTypeName(addCSPrefix: true)));
+            sb.AppendLine("");
         }
 
         public static void WriteClassConstructorDefine(Type type)
