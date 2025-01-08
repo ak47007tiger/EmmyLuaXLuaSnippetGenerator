@@ -438,10 +438,12 @@ namespace EmmyLuaSnippetGenerator
                 //前面的方法都是overload
                 for (int i = 0; i < methodInfoList.Count - 1; i++)
                 {
+                    var methodInfo = methodInfoList[i];
+
                     WriteOverloadMethodCommentDecalre(
-                        parameterInfos: methodInfoList[i].GetParameters(), 
-                        returnType: methodInfoList[i].ReturnType,
-                        classType: type
+                        parameterInfos: methodInfo.GetParameters(), 
+                        returnType: methodInfo.ReturnType,
+                        classType: methodInfo.IsStatic ? null : type
                     );
                 }
 
