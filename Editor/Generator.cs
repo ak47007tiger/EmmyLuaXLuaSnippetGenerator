@@ -215,16 +215,26 @@ namespace EmmyLuaSnippetGenerator
             sb.AppendLine("---@class NotExportEnum @表明该枚举未导出");
             sb.AppendLine("");
 
+            // xLua Define
             sb.AppendLine(string.Format("---@class {0}", "CS"));
             sb.AppendLine("CS = {}");
+            sb.AppendLine("");
 
             var targetNamespaces = _options.GetTargetNamespaces();
 
             for (int i = 0; i < targetNamespaces.Length; i++)
             {
-                string tableName = string.Format("CS.{0}", targetNamespaces[i]);
+                string namespaceName = targetNamespaces[i];
+
+                string tableName = string.Format("CS.{0}", namespaceName);
                 sb.AppendLine(string.Format("---@class {0}", tableName));
                 sb.AppendLine(string.Format("{0} = {{}}", tableName));
+
+                if (_options.GenerateCSAlias)
+                {
+                    sb.AppendLine(string.Format("---@alias {0} {1}", namespaceName, tableName));
+                }
+
                 sb.AppendLine("");
             }
 
@@ -234,18 +244,17 @@ namespace EmmyLuaSnippetGenerator
 
                 keepStringTypeName = typeInst == typeof(string);
 
-                foreach (bool withCSPrefix in TrueAndFalse)
+                WriteClassDefine(typeInst);
+                WriteClassFieldDefine(typeInst);
+                sb.AppendLine(string.Format("{0} = {{}}", typeInst.ToLuaTypeName().ReplaceDotOrPlusWithUnderscore()));
+
+                if (_options.GenerateCSAlias)
                 {
-                    _options.GenerateCSAlias = withCSPrefix;
-                    WriteClassDefine(typeInst);
-                    WriteClassFieldDefine(typeInst);
-                    sb.AppendLine(string.Format("{0} = {{}}", typeInst.ToLuaTypeName().ReplaceDotOrPlusWithUnderscore()));
-
-                    WriteClassConstructorDefine(typeInst);
-                    WriteClassMethodDefine(typeInst);
-
-                    sb.AppendLine("");
+                    WriteClassAliasDefine(typeInst);
                 }
+
+                WriteClassConstructorDefine(typeInst);
+                WriteClassMethodDefine(typeInst);
 
                 sb.AppendLine("");
             }
@@ -259,8 +268,7 @@ namespace EmmyLuaSnippetGenerator
         {
             if (type.BaseType != null && !type.IsEnum)
             {
-                sb.AppendLine(string.Format("---@class {0} : {1}", type.ToLuaTypeName(),
-                    type.BaseType.ToLuaTypeName()));
+                sb.AppendLine(string.Format("---@class {0} : {1}", type.ToLuaTypeName(), type.BaseType.ToLuaTypeName()));
             }
             else
             {
@@ -315,6 +323,11 @@ namespace EmmyLuaSnippetGenerator
                 Type propertyType = propertyInfo.PropertyType;
                 sb.AppendLine(string.Format("---@field {0} {1}", propertyInfo.Name, propertyType.ToLuaTypeName()));
             }
+        }
+
+        public static void WriteClassAliasDefine(Type type)
+        {
+            sb.AppendLine(string.Format("---@alias {0} {1}", type.ToLuaTypeName(addCSPrefix: false), type.ToLuaTypeName(addCSPrefix: true)));
         }
 
         public static void WriteClassConstructorDefine(Type type)
@@ -633,9 +646,9 @@ namespace EmmyLuaSnippetGenerator
 
         private static bool keepStringTypeName;
 
-        public static string ToLuaTypeName(this Type type)
+        public static string ToLuaTypeName(this Type type, bool addCSPrefix = true)
         {
-            string prefix = _options.GenerateCSAlias ? "CS." : "";
+            string prefix = addCSPrefix ? "CS." : "";
 
             if (type == null)
             {
@@ -675,22 +688,6 @@ namespace EmmyLuaSnippetGenerator
             if (bracketIndex > 0)
             {
                 typeName = typeName.Substring(0, bracketIndex);
-                // Type[] genericTypes = type.GetGenericArguments();
-                // for (int i = 0; i < genericTypes.Length; i++)
-                // {
-                //     Type genericArgumentType = genericTypes[i];
-                //     string genericArgumentTypeName;
-                //     if (CSharpTypeNameDic.ContainsKey(genericArgumentType))
-                //     {
-                //         genericArgumentTypeName = CSharpTypeNameDic[genericArgumentType];
-                //     }
-                //     else
-                //     {
-                //         genericArgumentTypeName = genericArgumentType.ToLuaTypeName();
-                //     }
-
-                //     typeName = typeName + "_" + genericArgumentTypeName.ReplaceDotOrPlusWithUnderscore();
-                // }
             }
 
             return prefix + typeName;
