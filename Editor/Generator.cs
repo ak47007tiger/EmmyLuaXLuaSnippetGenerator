@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using NetFile;
 using UnityEditor;
 using UnityEngine;
@@ -214,6 +215,8 @@ namespace EmmyLuaSnippetGenerator
             sb.AppendLine("---@class NotExportEnum @表明该枚举未导出");
             sb.AppendLine("");
 
+            WriteGlobalVariablesDefine();
+
             WriteXLuaDefine();
 
             var targetNamespaces = _options.GetTargetNamespaces();
@@ -259,6 +262,16 @@ namespace EmmyLuaSnippetGenerator
         }
 
         #region TypeDefineFileGenerator
+
+        public static void WriteGlobalVariablesDefine()
+        {
+            foreach (var (varName, varTypeName) in _options.GetGlobalVariables())
+            {
+                sb.AppendLine(string.Format("---@type {0}", varTypeName));
+                sb.AppendLine(string.Format("{0} = nil", varName));
+                sb.AppendLine("");
+            }
+        }
 
         // xLua相关的定义单独写
         public static void WriteXLuaDefine()
