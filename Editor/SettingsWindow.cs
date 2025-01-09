@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Xml;
 using System.IO;
 using System;
+using System.Linq;
 
 namespace EmmyLuaSnippetGenerator
 {
@@ -11,6 +12,7 @@ namespace EmmyLuaSnippetGenerator
     {
         public string GeneratePath;
         public string TargetNamespacesStr;
+        public string GlobalVariablesStr;
         public bool GenerateCSAlias;
 
         public static string SavePath => AppDomain.CurrentDomain.BaseDirectory + @"\EmmyLuaSnippetToolData\config.xml";
@@ -18,6 +20,13 @@ namespace EmmyLuaSnippetGenerator
         public readonly string[] GetTargetNamespaces()
         {
             return TargetNamespacesStr.Split(' ');
+        }
+
+        // varName, typeName
+        public readonly (string, string)[] GetGlobalVariables()
+        {
+            var varInfos = GlobalVariablesStr.Split(' ');
+            return varInfos.Select(info => info.Split(':')).Select(info => (info[0], info[1])).ToArray();
         }
     }
 
@@ -45,7 +54,10 @@ namespace EmmyLuaSnippetGenerator
 
             GUILayout.Space(20);
 
-            GUILayout.Label("生成类型注解文件的路\n(具体到文件名)");
+            GUILayout.Label(
+                "生成类型注解文件的路"
+                + "\n- 具体到文件名"
+            );
             _options.GeneratePath = EditorGUILayout.TextField(
                 _options.GeneratePath,
                 GUILayout.MinWidth(200)
@@ -53,9 +65,25 @@ namespace EmmyLuaSnippetGenerator
 
             GUILayout.Space(10);
 
-            GUILayout.Label("要生成注解的C#命名空间\n(多个命名空间用空格分隔)");
+            GUILayout.Label(
+                "要生成注解的C#命名空间"
+                + "\n- 多个命名空间用空格分隔"
+                + "\n- 例如: UnityEngine DG FairyGUI"
+            );
             _options.TargetNamespacesStr = EditorGUILayout.TextField(
                 _options.TargetNamespacesStr,
+                GUILayout.MinWidth(200)
+            );
+
+            GUILayout.Space(20);
+
+            GUILayout.Label(
+                "要生成注解的全局变量"
+                + "\n- 变量名:类型名, 多个组用空格分隔"
+                + "\n- 例如: UNITY_EDITOR:boolean DEBUG_LV:integer"
+            );
+            _options.GlobalVariablesStr = EditorGUILayout.TextField(
+                _options.GlobalVariablesStr,
                 GUILayout.MinWidth(200)
             );
 
