@@ -19,12 +19,22 @@ namespace EmmyLuaSnippetGenerator
 
         public readonly string[] GetTargetNamespaces()
         {
+            if (string.IsNullOrEmpty(TargetNamespacesStr))
+            {
+                return Array.Empty<string>();
+            }
+
             return TargetNamespacesStr.Split(' ');
         }
 
         // varName, typeName
         public readonly (string, string)[] GetGlobalVariables()
         {
+            if (string.IsNullOrEmpty(GlobalVariablesStr))
+            {
+                return Array.Empty<(string, string)>();
+            }
+
             var varInfos = GlobalVariablesStr.Split(' ');
             return varInfos.Select(info => info.Split(':')).Select(info => (info[0], info[1])).ToArray();
         }
