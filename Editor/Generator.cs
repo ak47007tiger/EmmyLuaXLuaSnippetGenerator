@@ -258,10 +258,45 @@ namespace EmmyLuaSnippetGenerator
                 sb.AppendLine("");
             }
 
-            File.WriteAllText(_options.GeneratePath, sb.ToString());
+            WriteToFile();
         }
 
         #region TypeDefineFileGenerator
+
+        public static void WriteToFile()
+        {
+            string[] lines = sb.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+
+            int fileCount = 0;
+            int lineCount = 0;
+            string fileName;
+
+            StreamWriter writer = null;
+
+            foreach (string line in lines)
+            {
+                if (writer == null)
+                {
+                    fileName = _options.GeneratePath + "TypeHint_" + fileCount + ".lua";
+                    writer = new StreamWriter(fileName);
+                    writer.WriteLine("---@meta");
+                    writer.WriteLine("");
+                }
+
+                if (string.IsNullOrWhiteSpace(line) && _options.SingleFileMaxLine != 0 && lineCount >= _options.SingleFileMaxLine)
+                {
+                    writer?.Close();
+                    fileCount++;
+                    lineCount = 0;
+                    writer = null;
+                    continue;
+                }
+
+                writer.WriteLine(line);
+                lineCount++; 
+            } 
+            writer?.Close();
+        }
 
         public static void WriteGlobalVariablesDefine()
         {
