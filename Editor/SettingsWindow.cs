@@ -14,6 +14,7 @@ namespace EmmyLuaSnippetGenerator
         public string TargetNamespacesStr;
         public string GlobalVariablesStr;
         public bool GenerateCSAlias;
+        public int SingleFileMaxLine;
 
         public static string SavePath => AppDomain.CurrentDomain.BaseDirectory + @"\EmmyLuaSnippetToolData\config.xml";
 
@@ -65,8 +66,8 @@ namespace EmmyLuaSnippetGenerator
             GUILayout.Space(20);
 
             GUILayout.Label(
-                "生成类型注解文件的路"
-                + "\n- 具体到文件名"
+                "生成类型注解文件的路径"
+                + "\n- 具体到目录, 不要指定文件名"
             );
             _options.GeneratePath = EditorGUILayout.TextField(
                 _options.GeneratePath,
@@ -102,6 +103,18 @@ namespace EmmyLuaSnippetGenerator
             GUILayout.Label("生成不带CS.前缀的alias");
             _options.GenerateCSAlias = EditorGUILayout.Toggle(_options.GenerateCSAlias);
             
+            GUILayout.Space(10);
+
+            GUILayout.Label(
+                "单个注解文件的最大行数"
+                + "\n- 超过该行数时会自动拆分成多个文件"
+                + "\n- 0表示不限制(不推荐)"
+            );
+            _options.SingleFileMaxLine = EditorGUILayout.IntField(
+                _options.SingleFileMaxLine,
+                GUILayout.MinWidth(200)
+            );
+
             GUILayout.Space(20);
 
             if (GUILayout.Button("保存配置文件"))
