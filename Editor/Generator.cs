@@ -243,6 +243,11 @@ namespace EmmyLuaSnippetGenerator
 
                 keepStringTypeName = typeInst == typeof(string);
 
+                if (typeInst.ToLuaTypeName() == string.Empty)
+                {
+                    continue;
+                }
+
                 WriteClassDefine(typeInst);
                 WriteClassFieldDefine(typeInst);
                 sb.AppendLine(string.Format("{0} = {{}}", typeInst.ToLuaTypeName().ReplaceDotOrPlusWithUnderscore()));
@@ -735,16 +740,28 @@ namespace EmmyLuaSnippetGenerator
             string typeName = type.FullName;
             if (typeName == null)
             {
-                return prefix + type.ToString().EscapeGenericTypeSuffix();
+                return string.Empty;
             }
 
             if (type.IsEnum)
             {
-                return prefix + type.FullName.EscapeGenericTypeSuffix().Replace("+", ".");
+                string cleanFullName = type.FullName.EscapeGenericTypeSuffix().Replace("+", ".");
+
+                if (string.IsNullOrEmpty(cleanFullName))
+                {
+                    return string.Empty;
+                }
+
+                return prefix + cleanFullName;
             }
 
             //去除泛型后缀
             typeName = typeName.EscapeGenericTypeSuffix();
+
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return string.Empty;
+            }
 
             int bracketIndex = typeName.IndexOf("[[");
             if (bracketIndex > 0)
@@ -790,13 +807,12 @@ namespace EmmyLuaSnippetGenerator
 
         public static string EscapeGenericTypeSuffix(this string s)
         {
-            string result = Regex.Replace(s , @"\`[0-9]+", "");
+            if (s.Contains("<"))
+            {
+                return string.Empty;
+            }
 
-            // int index = result.IndexOf("_");
-            // if (index != -1)
-            // {
-            //     result = result[..index];
-            // }
+            string result = Regex.Replace(s , @"\`[0-9]+", "");
 
             result = result.Replace("+", ".");
 
