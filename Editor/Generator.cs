@@ -8,6 +8,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using NetFile;
+using OfficeOpenXml.FormulaParsing.ExpressionGraph.FunctionCompilers;
+using Sirenix.Utilities;
 using UnityEditor;
 using UnityEngine;
 
@@ -95,15 +97,17 @@ namespace EmmyLuaSnippetGenerator
         [MenuItem("LuaType/清除EmmyLua类型注解")]
         public static void ClearEmmyTypeFiles()
         {
-            if (File.Exists(_options.GeneratePath))
+            // 清除目录下的注解文件
+            int count = 0;
+            string[] files = Directory.GetFiles(_options.GeneratePath, "TypeHint_*.lua");
+
+            foreach (string file in files)
             {
-                File.Delete(_options.GeneratePath);
-                Debug.Log("Clear Lua type snippet Complete!");
+                File.Delete(file);
+                count++;
             }
-            else
-            {
-                Debug.LogWarning("文件不存在");
-            }
+
+            Debug.Log($"{count} TypeHint files Cleared.");
         }
 
         private static HashSet<Type> CollectAllExportType()
@@ -241,12 +245,13 @@ namespace EmmyLuaSnippetGenerator
             {
                 Type typeInst = exportTypeList[i];
 
-                keepStringTypeName = typeInst == typeof(string);
-
-                if (typeInst.ToLuaTypeName() == string.Empty)
+                // 防止一些匿名类型的生成
+                if (typeInst.ToString().Contains("<"))
                 {
                     continue;
                 }
+
+                keepStringTypeName = typeInst == typeof(string);
 
                 WriteClassDefine(typeInst);
                 WriteClassFieldDefine(typeInst);
@@ -270,6 +275,8 @@ namespace EmmyLuaSnippetGenerator
 
         public static void WriteToFile()
         {
+            ClearEmmyTypeFiles();
+
             string[] lines = sb.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
 
             int fileCount = 0;
@@ -340,15 +347,19 @@ namespace EmmyLuaSnippetGenerator
             }
         }
 
-        public static void WriteClassFieldDefine(Type type)
+        public static void WriteClassFieldDefine(Type classType)
         {
             FieldInfo[] publicInstanceFieldInfos =
-                type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                classType.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+
             FieldInfo[] publicStaticFieldInfos =
-                type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+                classType.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+            
             List<FieldInfo> fieldInfoList = new List<FieldInfo>();
+
             fieldInfoList.AddRange(publicStaticFieldInfos);
-            if (!type.IsEnum)
+
+            if (!classType.IsEnum)
             {
                 fieldInfoList.AddRange(publicInstanceFieldInfos);
             }
@@ -356,22 +367,27 @@ namespace EmmyLuaSnippetGenerator
             for (int i = 0; i < fieldInfoList.Count; i++)
             {
                 FieldInfo fieldInfo = fieldInfoList[i];
-                if (fieldInfo.IsMemberObsolete(type))
+
+                if (fieldInfo.IsMemberObsolete(classType))
                 {
                     continue;
                 }
 
-                Type fieldType = fieldInfo.FieldType;
-                sb.AppendLine(string.Format("---@field {0} {1}", fieldInfo.Name, fieldType.ToLuaTypeName()));
+                string fieldTypeName = fieldInfo.FieldType.ToLuaTypeName();
+
+                sb.AppendLine(string.Format("---@field {0} {1}", fieldInfo.Name, fieldTypeName));
             }
 
             PropertyInfo[] publicInstancePropertyInfo =
-                type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                classType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            
             PropertyInfo[] publicStaticPropertyInfo =
-                type.GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+                classType.GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+            
             List<PropertyInfo> propertyInfoList = new List<PropertyInfo>();
             propertyInfoList.AddRange(publicStaticPropertyInfo);
-            if (!type.IsEnum)
+
+            if (!classType.IsEnum)
             {
                 propertyInfoList.AddRange(publicInstancePropertyInfo);
             }
@@ -379,13 +395,78 @@ namespace EmmyLuaSnippetGenerator
             for (int i = 0; i < propertyInfoList.Count; i++)
             {
                 PropertyInfo propertyInfo = propertyInfoList[i];
-                if (propertyInfo.IsMemberObsolete(type))
+                if (propertyInfo.IsMemberObsolete(classType))
                 {
                     continue;
                 }
 
                 Type propertyType = propertyInfo.PropertyType;
                 sb.AppendLine(string.Format("---@field {0} {1}", propertyInfo.Name, propertyType.ToLuaTypeName()));
+            }
+
+            if (_options.InferGenericFieldType)
+            {
+                Dictionary<string, Type> inferedGenericFieldInfos = new();
+
+                // 如果一个类型自身不是泛型, 但其父类是泛型, 则可认为在本次继承过程中完全地提供了父类所需的泛型信息.
+                // 这种情况下, 从父类继承而来的泛型字段可以通过该信息进行类型推断.
+                if (!classType.IsGenericType
+                    && classType.BaseType != null
+                    && classType.BaseType.IsGenericType
+                // 只适用于父类的泛型参数只有一个的情况
+                // 如果有多个泛型参数, 则不能很好的分析泛型字段应使用哪一个
+                    && classType.BaseType.GetGenericArguments().Length == 1
+                )
+                {
+                    var genericTypeDefinition = classType.BaseType.GetGenericTypeDefinition();
+
+                    // 尝试推断泛型字段
+                    var baseClassFields =
+                            genericTypeDefinition.GetFields(BindingFlags.Public | BindingFlags.Instance)
+                        .Concat(
+                            genericTypeDefinition.GetFields(BindingFlags.Public | BindingFlags.Static)
+                        )
+                        .ToArray();
+
+                    foreach (var field in baseClassFields)
+                    {
+                        if (!field.FieldType.IsGenericParameter)
+                        {
+                            continue;
+                        }
+
+                        inferedGenericFieldInfos.Add(field.Name, classType);
+                    }
+
+                    // 尝试推断泛型属性
+                    var baseClassProperties =
+                            genericTypeDefinition.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                        .Concat(
+                            genericTypeDefinition.GetProperties(BindingFlags.Public | BindingFlags.Static)
+                        )
+                        .ToArray();
+
+                    foreach (var property in baseClassProperties)
+                    {
+                        if (!property.PropertyType.IsGenericParameter)
+                        {
+                            continue;
+                        }
+
+                        inferedGenericFieldInfos.Add(property.Name, classType);
+                    }
+
+                    // 写入
+                    foreach (var inferedGenericFieldInfo in inferedGenericFieldInfos)
+                    {
+                        sb.AppendLine(string.Format(
+                            "---@field {0} {1} -- infered from {2}",
+                            inferedGenericFieldInfo.Key,
+                            inferedGenericFieldInfo.Value.ToLuaTypeName(),
+                            classType.BaseType
+                        ));
+                    }
+                }
             }
         }
 
@@ -740,28 +821,16 @@ namespace EmmyLuaSnippetGenerator
             string typeName = type.FullName;
             if (typeName == null)
             {
-                return string.Empty;
+                return prefix + type.ToString().EscapeGenericTypeSuffix();
             }
 
             if (type.IsEnum)
             {
-                string cleanFullName = type.FullName.EscapeGenericTypeSuffix().Replace("+", ".");
-
-                if (string.IsNullOrEmpty(cleanFullName))
-                {
-                    return string.Empty;
-                }
-
-                return prefix + cleanFullName;
+                return prefix + type.FullName.EscapeGenericTypeSuffix().Replace("+", ".");
             }
 
             //去除泛型后缀
             typeName = typeName.EscapeGenericTypeSuffix();
-
-            if (string.IsNullOrEmpty(typeName))
-            {
-                return string.Empty;
-            }
 
             int bracketIndex = typeName.IndexOf("[[");
             if (bracketIndex > 0)
@@ -807,11 +876,6 @@ namespace EmmyLuaSnippetGenerator
 
         public static string EscapeGenericTypeSuffix(this string s)
         {
-            if (s.Contains("<"))
-            {
-                return string.Empty;
-            }
-
             string result = Regex.Replace(s , @"\`[0-9]+", "");
 
             result = result.Replace("+", ".");
