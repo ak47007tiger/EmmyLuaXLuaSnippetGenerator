@@ -14,6 +14,7 @@ namespace EmmyLuaSnippetGenerator
         public string TargetNamespacesStr;
         public string GlobalVariablesStr;
         public bool GenerateCSAlias;
+        public bool InferGenericFieldType;
         public int SingleFileMaxLine;
 
         public static string SavePath => AppDomain.CurrentDomain.BaseDirectory + @"\EmmyLuaSnippetToolData\config.xml";
@@ -61,8 +62,6 @@ namespace EmmyLuaSnippetGenerator
 
         private void OnGUI()
         {
-            GUILayout.Label("配置文件将被保存在源代码文件的相同目录中.");
-
             GUILayout.Space(20);
 
             GUILayout.Label(
@@ -106,12 +105,23 @@ namespace EmmyLuaSnippetGenerator
             GUILayout.Space(10);
 
             GUILayout.Label(
+                "尝试推理泛型字段类型"
+                + "\n- 启用后, 将在继承泛型类的非泛型派生中添加泛型字段的类型"
+                + "\n- 显著影响注解生成速度, 但不影响类型分析性能"
+            );
+            _options.InferGenericFieldType = EditorGUILayout.Toggle(_options.InferGenericFieldType);
+
+            GUILayout.Space(10);
+
+            GUILayout.Label(
                 "单个注解文件的最大行数"
                 + "\n- 超过该行数时会自动拆分成多个文件"
-                + "\n- 0表示不限制(不推荐)"
+                + "\n- 大幅影响类型分析性能, 请依据电脑配置设置"
             );
-            _options.SingleFileMaxLine = EditorGUILayout.IntField(
+            _options.SingleFileMaxLine = (int)EditorGUILayout.Slider(
                 _options.SingleFileMaxLine,
+                5000,
+                40000,
                 GUILayout.MinWidth(200)
             );
 
