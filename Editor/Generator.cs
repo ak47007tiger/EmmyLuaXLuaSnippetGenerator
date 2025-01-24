@@ -81,23 +81,36 @@ namespace EmmyLuaSnippetGenerator
                 return;
             }
 
-            _options = loaded;
+            try
+            {
+                _options = loaded;
 
-            var set = CollectAllExportType();
-            exportTypeList.AddRange(set);
+                var set = CollectAllExportType();
+                exportTypeList.AddRange(set);
 
-            HandleExtensionMethods();
+                HandleExtensionMethods();
 
-            GenerateTypeDefines();
+                GenerateTypeDefines();
 
-            AssetDatabase.Refresh();
+                AssetDatabase.Refresh();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("错误: " + e.Message);
+                return;
+            }
 
-            Debug.Log("程序执行完毕.");
+            Debug.Log("生成注解文件完毕.");
         }
 
         [MenuItem("LuaType/清除EmmyLua类型注解")]
         public static void ClearEmmyTypeFiles()
         {
+            if (!Directory.Exists(_options.GeneratePath))
+            {
+                throw new Exception($"你指定的生成路径 {_options.GeneratePath} 不存在.");
+            }
+
             int count = 0;
             string[] files = Directory.GetFiles(_options.GeneratePath, "TypeHint_*.lua");
 
@@ -107,7 +120,7 @@ namespace EmmyLuaSnippetGenerator
                 count++;
             }
 
-            Debug.Log($"清除完毕, 删除了 {count} 份注解文件.");
+            Debug.Log($"清除完毕, 删除了 {count} 份注解文件. (生成时会自动执行该清理)");
         }
 
         private static HashSet<Type> CollectAllExportType()
@@ -277,8 +290,7 @@ namespace EmmyLuaSnippetGenerator
         {
             if (!Directory.Exists(_options.GeneratePath))
             {
-                Debug.LogError($"错误: 你指定的生成路径 {_options.GeneratePath} 不存在.");
-                return;
+                throw new Exception($"你指定的生成路径 {_options.GeneratePath} 不存在.");
             }
 
             ClearEmmyTypeFiles();
