@@ -72,7 +72,7 @@ namespace EmmyLuaSnippetGenerator
         {
             if (!XmlHelper.TryLoadConfig(SettingOptions.SavePath, out SettingOptions loaded))
             {
-                Debug.LogError("[LuaTypeUtility] 错误, 设置文件加载失败. 请先在[设置]选项内设置属性.");
+                Debug.LogError("错误: 需要一份配置文件才能开始生成注解. 在[设置]页面中配置它然后保存!");
                 return;
             }
             
@@ -91,13 +91,13 @@ namespace EmmyLuaSnippetGenerator
             GenerateTypeDefines();
 
             AssetDatabase.Refresh();
-            Debug.Log("Generate Lua snippet Complete!");
+
+            Debug.Log("程序执行完毕.");
         }
 
         [MenuItem("LuaType/清除EmmyLua类型注解")]
         public static void ClearEmmyTypeFiles()
         {
-            // 清除目录下的注解文件
             int count = 0;
             string[] files = Directory.GetFiles(_options.GeneratePath, "TypeHint_*.lua");
 
@@ -107,7 +107,7 @@ namespace EmmyLuaSnippetGenerator
                 count++;
             }
 
-            Debug.Log($"{count} TypeHint files Cleared.");
+            Debug.Log($"清除完毕, 删除了 {count} 份注解文件.");
         }
 
         private static HashSet<Type> CollectAllExportType()
@@ -275,6 +275,12 @@ namespace EmmyLuaSnippetGenerator
 
         public static void WriteToFile()
         {
+            if (!Directory.Exists(_options.GeneratePath))
+            {
+                Debug.LogError($"错误: 你指定的生成路径 {_options.GeneratePath} 不存在.");
+                return;
+            }
+
             ClearEmmyTypeFiles();
 
             string[] lines = sb.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -306,7 +312,8 @@ namespace EmmyLuaSnippetGenerator
 
                 writer.WriteLine(line);
                 lineCount++; 
-            } 
+            }
+
             writer?.Close();
         }
 
