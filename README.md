@@ -68,7 +68,7 @@
 
 项目中的部分全局变量可能从CSharp端设置, Lua无法识别它们. 在本配置中设置你项目中用到的全局变量及类型, 防止Lua频繁提示未定义字段的warning. 格式为`变量名:类型名`, 多个组用空格分隔. 如:
 
-`UNITY_EDITOR:boolean, DEBUG_LEVEL:number`
+`UNITY_EDITOR:boolean DEBUG_LEVEL:number`
 
 请确保这些注释不会影响变量原本的值. 如果注解文件不能和项目解耦, 则不建议开启这个选项.
 
