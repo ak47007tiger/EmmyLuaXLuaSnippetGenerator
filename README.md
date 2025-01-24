@@ -4,7 +4,7 @@
 
 本工具用于在Unity环境下为C#类型生成Lua注解文件, 以便提供类型检查和自动提示功能.
 
-适用于安装了**EmmyLua**或**SumnekoLua** (VSCode中称为Lua)插件的IDE, 其余类型注解格式相似的插件或许也能使用.
+适用于安装了**EmmyLua**或**SumnekoLua**(VSCode中称为Lua)插件的IDE, 其余类型注解格式相似的插件或许也能使用.
 
 
 
