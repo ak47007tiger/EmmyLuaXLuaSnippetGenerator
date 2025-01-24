@@ -50,9 +50,9 @@
 
 提供一个仅包含目录名的绝对路径, 以斜线/结尾. 
 
-如果生成的注解较多, 可能会生成多个注解文件. 最好提供一个全新的空目录方便管理.
+如果生成的注解较多, 可能会生成多个注解文件. 最好提供一个全新的空目录方便管理. 通常来说, 注解文件的目录需要设置在项目内, 以便你的IDE分析它们.
 
-如果你在使用SumnekoLua, 强烈建议将本目录设置在项目外, 并在SumnekoLua的workspace.library设置中将本目录添加为库文件. 这不仅能防止注解文件对版本管理产生干扰, 也能提升类型分析的性能.
+但如果你在使用**SumnekoLua**, 我更建议你将本目录设置在项目外, 然后在**SumnekoLua**的`workspace.library`设置中添加这个目录. 这不仅能防止注解文件对版本管理产生干扰, 也能提升类型分析的性能. 具体操作方法可以查看 [Libraries · LuaLS/lua-language-server Wiki](https://github.com/LuaLS/lua-language-server/wiki/Libraries#link-to-workspace)
 
 <h1 id="控件"></h1>
 
