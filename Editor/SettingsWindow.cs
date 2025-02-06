@@ -17,7 +17,15 @@ namespace EmmyLuaSnippetGenerator
         public bool InferGenericFieldType;
         public int SingleFileMaxLine;
 
-        public static string SavePath => AppDomain.CurrentDomain.BaseDirectory + @"\EmmyLuaSnippetToolData\config.xml";
+        private static string _saveRootPath = null;
+        public static string SaveRootPath
+        {
+            get => string.IsNullOrWhiteSpace(_saveRootPath)
+                ? AppDomain.CurrentDomain.BaseDirectory
+                : _saveRootPath;
+            set => _saveRootPath = value;
+        }
+        public static string SavePath => Path.Combine(SaveRootPath, @"EmmyLuaSnippetToolData\config.xml");
 
         public readonly string[] GetTargetNamespaces()
         {
@@ -65,8 +73,19 @@ namespace EmmyLuaSnippetGenerator
             GUILayout.Space(20);
 
             GUILayout.Label(
+                "配置文件的存放路径"
+                + "\n- 提供绝对目录, 不要指定文件名"
+            );
+            SettingOptions.SaveRootPath = EditorGUILayout.TextField(
+                SettingOptions.SaveRootPath,
+                GUILayout.MinWidth(200)
+            );
+
+            GUILayout.Space(10);
+
+            GUILayout.Label(
                 "生成类型注解文件的路径"
-                + "\n- 具体到目录, 不要指定文件名"
+                + "\n- 提供以\\结尾的绝对目录, 不要指定文件名"
             );
             _options.GeneratePath = EditorGUILayout.TextField(
                 _options.GeneratePath,
@@ -129,8 +148,15 @@ namespace EmmyLuaSnippetGenerator
 
             if (GUILayout.Button("保存配置文件"))
             {
-                XmlHelper.SaveConfig(_options, SettingOptions.SavePath);
-                this.Close();
+                try
+                {
+                    XmlHelper.SaveConfig(_options, SettingOptions.SavePath);
+                    this.Close();
+                }
+                catch (UnauthorizedAccessException e)
+                {
+                    Debug.LogError($"错误: 没有对目录 {SettingOptions.SaveRootPath} 的操作权限. 尝试修改配置文件的存放路径.\n{e.StackTrace}");
+                }
             }
 
             if (GUILayout.Button("取消"))

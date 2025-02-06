@@ -75,11 +75,6 @@ namespace EmmyLuaSnippetGenerator
                 Debug.LogError("错误: 需要一份配置文件才能开始生成注解. 在[设置]页面中配置它然后保存!");
                 return;
             }
-            
-            if (!EditorUtility.DisplayDialog("Lua Type", "确定按照当前的设置生成Lua类型注解?", "Yes", "No"))
-            {
-                return;
-            }
 
             try
             {
@@ -91,6 +86,10 @@ namespace EmmyLuaSnippetGenerator
                 HandleExtensionMethods();
 
                 GenerateTypeDefines();
+
+                ClearEmmyTypeFiles();
+
+                WriteToFile();
 
                 AssetDatabase.Refresh();
             }
@@ -106,9 +105,14 @@ namespace EmmyLuaSnippetGenerator
         [MenuItem("LuaType/清除EmmyLua类型注解")]
         public static void ClearEmmyTypeFiles()
         {
+            if (_options.GeneratePath == null || !_options.GeneratePath.EndsWith("\\"))
+            {
+                throw new Exception($"你指定的生成路径 {_options.GeneratePath} 没有以\\结尾.");
+            }
+
             if (!Directory.Exists(_options.GeneratePath))
             {
-                throw new Exception($"你指定的生成路径 {_options.GeneratePath} 不存在.");
+                return;
             }
 
             int count = 0;
@@ -280,20 +284,21 @@ namespace EmmyLuaSnippetGenerator
 
                 sb.AppendLine("");
             }
-
-            WriteToFile();
         }
 
         #region TypeDefineFileGenerator
 
         public static void WriteToFile()
         {
-            if (!Directory.Exists(_options.GeneratePath))
+            if (_options.GeneratePath == null || !_options.GeneratePath.EndsWith("\\"))
             {
-                throw new Exception($"你指定的生成路径 {_options.GeneratePath} 不存在.");
+                throw new Exception($"你指定的生成路径 {_options.GeneratePath} 没有以\\结尾.");
             }
 
-            ClearEmmyTypeFiles();
+            if (!Directory.Exists(_options.GeneratePath))
+            {
+                Directory.CreateDirectory(_options.GeneratePath);
+            }
 
             string[] lines = sb.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
 
