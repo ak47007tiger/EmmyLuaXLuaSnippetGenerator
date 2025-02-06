@@ -118,7 +118,10 @@ namespace EmmyLuaSnippetGenerator
 
             GUILayout.Space(10);
 
-            GUILayout.Label("生成不带CS.前缀的alias");
+            GUILayout.Label(
+                "生成带CS.前缀的兼容alias"
+                + "\n- 启用后, 将为生成的类型名额外添加带CS.前缀的版本"
+            );
             _options.GenerateCSAlias = EditorGUILayout.Toggle(_options.GenerateCSAlias);
             
             GUILayout.Space(10);

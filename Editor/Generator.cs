@@ -272,13 +272,15 @@ namespace EmmyLuaSnippetGenerator
             {
                 string namespaceName = targetNamespaces[i];
 
-                string tableName = string.Format("CS.{0}", namespaceName);
-                sb.AppendLine(string.Format("---@class {0}", tableName));
-                sb.AppendLine(string.Format("{0} = {{}}", tableName));
+                sb.AppendLine(string.Format("---@class {0}", namespaceName));
+                sb.AppendLine(string.Format("{0} = {{}}", namespaceName));
 
                 if (_options.GenerateCSAlias)
                 {
-                    sb.AppendLine(string.Format("---@alias {0} {1}", namespaceName, tableName));
+                    string namespaceCSAlias = string.Format("CS.{0}", namespaceName);
+
+                    sb.AppendLine(string.Format("---@alias {0} {1}", namespaceCSAlias, namespaceName));
+                    sb.AppendLine(string.Format("{0} = {{}}", namespaceCSAlias));
                 }
 
                 sb.AppendLine("");
@@ -370,7 +372,7 @@ namespace EmmyLuaSnippetGenerator
 
             // typeof function
             sb.AppendLine(@"---@param obj any");
-            sb.AppendLine(@"---@return CS.System.Type");
+            sb.AppendLine(@"---@return System.Type");
             sb.AppendLine(@"function typeof(obj) end");
             sb.AppendLine("");
         }
@@ -512,7 +514,11 @@ namespace EmmyLuaSnippetGenerator
 
         public static void WriteClassAliasDefine(Type type)
         {
-            sb.AppendLine(string.Format("---@alias {0} {1}", type.ToLuaTypeName(addCSPrefix: false), type.ToLuaTypeName(addCSPrefix: true)));
+            string typeName = type.ToLuaTypeName(addCSPrefix: false);
+            string typeCSAlias = type.ToLuaTypeName(addCSPrefix: true);
+
+            sb.AppendLine(string.Format("---@alias {0} {1}", typeCSAlias, typeName));
+            sb.AppendLine(string.Format("{0} = {{}}", typeCSAlias));
             sb.AppendLine("");
         }
 
@@ -834,7 +840,7 @@ namespace EmmyLuaSnippetGenerator
 
         private static bool keepStringTypeName;
 
-        public static string ToLuaTypeName(this Type type, bool addCSPrefix = true)
+        public static string ToLuaTypeName(this Type type, bool addCSPrefix = false)
         {
             string prefix = addCSPrefix ? "CS." : "";
 
