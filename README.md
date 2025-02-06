@@ -105,7 +105,7 @@ local vec3 = UnityEngine.Vector3.zero
 
 ### 尝试推理泛型字段类型
 
-开启后, 将会尝试推理泛型类的非泛型派生中, 继承而来的泛型字段/属性的实际类型. 参考以下代码:
+开启后, 将会尝试推理泛型类的非泛型派生中, 继承而来的泛型字段/属性的实际类型. 如以下C#代码:
 
 ```c#
 class Singleton<T> {
@@ -116,34 +116,47 @@ class Singleton<T> {
 class SomeManager : Singleton<SomeManager> {
     public void DoSomething() {}
 }
+```
 
-// 对于泛型类Singleton, 程序将会生成如下格式的注解:
+在未开启本选项时, 这段代码的注解会按如下格式生成:
+
+```lua
 ---@class Singleton
----@field Instance CS.T
----@field instance CS.T -- 未知类型的泛型参数直接生成为CS.参数名
+---@field Instance T
+---@field instance T -- 未知类型的泛型参数直接生成为参数名
 local Singleton = {}
 
-// 若开启本选项, 生成SomeManager类的注解时将能够分析Instance和instance的实际类型为SomeManager, 并在生成时添加它们的具体类型注释, 覆盖父类Singleton中的类型定义.
+---@class SomeManager
+local SomeManager = {}
+
+-- 编写业务代码时:
+-- 打出Instance后不能自动提示后续字段, 因为Instance类型未被推理, 而是被识别为T
+local sm = SomeManager()
+sm.Instance.DoSomething() -- cause warning: undefied field "DoSomething"
+```
+
+开启本选项后, 生成SomeManager类的注解时将能够分析Instance和instance的实际类型为SomeManager, 并在生成时添加它们的具体类型注释, 覆盖父类Singleton中的类型定义.
+
+```lua
+---@class Singleton
+---@field Instance T
+---@field instance T
+local Singleton = {}
+
 ---@class SomeManager
 ---@field Instance SomeManager -- infer from Singleton`1[SomeManager]
 ---@field instance SomeManager -- infer from Singleton`1[SomeManager]
 local SomeManager = {}
 
--- 运行环境:
+-- 编写业务代码时:
 -- 可以提示出DoSomething方法, 因为Instance类型已经被识别为SomeManager
-someManager.Instance.DoSomething()
-
-// 否则, 该类型将沿用Singleton中的泛型类型CS.T, 不会在SomeManager中生成覆盖类型的字段.
----@class SomeManager
-local SomeManager = {}
-
--- 运行环境:
--- 打出Instance后不再能自动提示后续字段, 因为Instance类型未被推理, 而是被识别为CS.T
-someManager.Instance.DoSomething() -- cause warning: undefied field "DoSomething"
-
+local sm = SomeManager()
+sm.Instance.DoSomething()
 ```
 
-如果你的项目中大量使用了泛型, 强烈推荐开启本功能, 因为调用链上的某个字段丢失类型信息将影响后续所有类型. 开启本选项将显著影响生成注解文件的速度, 但**不会**影响编辑器分析类型的速度. 考虑到注解文件不会频繁地被生成, 这是一笔划算的开销.
+理论上, 只要派生类的泛型参数数量少于父类, 我们就能通过这个原理获得部分类型信息. 受限于时间原因, 我暂时只做了**字段**和**属性**的推理以应对大部分场景, 非泛型方法的参数和返回值类型推断应该可以用类似的办法实现.
+
+如果你的项目中大量使用了泛型, 强烈推荐开启本功能, 因为调用链上的某个字段丢失类型信息将影响后续所有类型. 开启本选项将减慢生成注解文件的速度, 但**不会**影响编辑器分析类型的速度. 考虑到注解文件不会频繁地被生成, 这是一笔划算的开销.
 
 <h1 id="性能"></h1>
 
