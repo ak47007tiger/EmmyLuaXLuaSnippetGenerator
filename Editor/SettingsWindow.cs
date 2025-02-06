@@ -8,7 +8,7 @@ using System.Linq;
 namespace EmmyLuaSnippetGenerator
 {
     [Serializable]
-    public struct SettingOptions
+    public sealed class SettingOptions
     {
         public string GeneratePath;
         public string TargetNamespacesStr;
@@ -27,7 +27,7 @@ namespace EmmyLuaSnippetGenerator
         }
         public static string SavePath => Path.Combine(SaveRootPath, @"EmmyLuaSnippetToolData\config.xml");
 
-        public readonly string[] GetTargetNamespaces()
+        public string[] GetTargetNamespaces()
         {
             if (string.IsNullOrEmpty(TargetNamespacesStr))
             {
@@ -38,7 +38,7 @@ namespace EmmyLuaSnippetGenerator
         }
 
         // varName, typeName
-        public readonly (string, string)[] GetGlobalVariables()
+        public (string, string)[] GetGlobalVariables()
         {
             if (string.IsNullOrEmpty(GlobalVariablesStr))
             {

@@ -72,14 +72,25 @@ namespace EmmyLuaSnippetGenerator
         {
             if (!XmlHelper.TryLoadConfig(SettingOptions.SavePath, out SettingOptions loaded))
             {
-                Debug.LogError("错误: 需要一份配置文件才能开始生成注解. 在[设置]页面中配置它然后保存!");
+                Debug.LogError("错误: 需要一份配置文件才能执行操作. 在[设置]页面中配置它然后保存!");
                 return;
+            }
+
+            _options = loaded;
+
+            if (_options.GeneratePath == null || !_options.GeneratePath.EndsWith("\\"))
+            {
+                Debug.LogError($"错误: 你指定的生成路径 {_options.GeneratePath} 没有以\\结尾.");
+                return;
+            }
+
+            if (!Directory.Exists(_options.GeneratePath))
+            {
+                Directory.CreateDirectory(_options.GeneratePath);
             }
 
             try
             {
-                _options = loaded;
-
                 var set = CollectAllExportType();
                 exportTypeList.AddRange(set);
 
@@ -98,6 +109,12 @@ namespace EmmyLuaSnippetGenerator
                 Debug.LogError("错误: " + e.Message);
                 return;
             }
+            finally
+            {
+                exportTypeList.Clear();
+                extensionMethodsDic.Clear();
+                sb.Clear();
+            }
 
             Debug.Log("生成注解文件完毕.");
         }
@@ -105,9 +122,18 @@ namespace EmmyLuaSnippetGenerator
         [MenuItem("LuaType/清除EmmyLua类型注解")]
         public static void ClearEmmyTypeFiles()
         {
+            if (!XmlHelper.TryLoadConfig(SettingOptions.SavePath, out SettingOptions loaded))
+            {
+                Debug.LogError("错误: 需要一份配置文件才能执行操作. 在[设置]页面中配置它然后保存!");
+                return;
+            }
+
+            _options = loaded;
+
             if (_options.GeneratePath == null || !_options.GeneratePath.EndsWith("\\"))
             {
-                throw new Exception($"你指定的生成路径 {_options.GeneratePath} 没有以\\结尾.");
+                Debug.LogError($"错误: 你指定的生成路径 {_options.GeneratePath} 没有以\\结尾.");
+                return;
             }
 
             if (!Directory.Exists(_options.GeneratePath))
@@ -290,16 +316,6 @@ namespace EmmyLuaSnippetGenerator
 
         public static void WriteToFile()
         {
-            if (_options.GeneratePath == null || !_options.GeneratePath.EndsWith("\\"))
-            {
-                throw new Exception($"你指定的生成路径 {_options.GeneratePath} 没有以\\结尾.");
-            }
-
-            if (!Directory.Exists(_options.GeneratePath))
-            {
-                Directory.CreateDirectory(_options.GeneratePath);
-            }
-
             string[] lines = sb.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
 
             int fileCount = 0;
