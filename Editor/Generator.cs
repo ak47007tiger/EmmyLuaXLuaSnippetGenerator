@@ -518,7 +518,7 @@ namespace EmmyLuaSnippetGenerator
             string typeCSAlias = type.ToLuaTypeName(addCSPrefix: true);
 
             sb.AppendLine(string.Format("---@alias {0} {1}", typeCSAlias, typeName));
-            sb.AppendLine(string.Format("{0} = {{}}", typeCSAlias));
+            sb.AppendLine(string.Format("{0} = {1}", typeCSAlias, typeName));
             sb.AppendLine("");
         }
 
