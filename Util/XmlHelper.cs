@@ -6,7 +6,7 @@ namespace EmmyLuaSnippetGenerator
 {
     public static class XmlHelper
     {
-        public static bool SaveConfig<T>(T config, string filePath)
+        public static void SaveConfig<T>(T config, string filePath)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filePath)))
             {
@@ -18,8 +18,6 @@ namespace EmmyLuaSnippetGenerator
             using StreamWriter writer = new(filePath);
 
             serializer.Serialize(writer, config);
-
-            return true;
         }
 
         public static bool TryLoadConfig<T>(string filePath, out T config)
