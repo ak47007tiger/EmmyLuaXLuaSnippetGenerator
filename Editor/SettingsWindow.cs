@@ -14,9 +14,9 @@ namespace EmmyLuaSnippetGenerator
         public string TargetNamespacesStr;
         public string GlobalVariablesStr;
         public string FunctionCompatibleTypesStr;
-        public bool GenerateCSAlias;
-        public bool InferGenericFieldType;
-        public int SingleFileMaxLine;
+        public bool GenerateCSAlias = true;
+        public bool InferGenericFieldType = true;
+        public int SingleFileMaxLine = 5000;
 
         private static string _saveRootPath = null;
         public static string SaveRootPath
@@ -76,6 +76,10 @@ namespace EmmyLuaSnippetGenerator
             if (XmlHelper.TryLoadConfig(SettingOptions.SavePath, out SettingOptions settings))
             {
                 _options = settings;
+            }
+            else
+            {
+                _options = new();
             }
         }
 
