@@ -13,6 +13,7 @@ namespace EmmyLuaSnippetGenerator
         public string GeneratePath;
         public string TargetNamespacesStr;
         public string GlobalVariablesStr;
+        public string FunctionCompatibleTypesStr;
         public bool GenerateCSAlias;
         public bool InferGenericFieldType;
         public int SingleFileMaxLine;
@@ -29,7 +30,7 @@ namespace EmmyLuaSnippetGenerator
 
         public string[] GetTargetNamespaces()
         {
-            if (string.IsNullOrEmpty(TargetNamespacesStr))
+            if (string.IsNullOrWhiteSpace(TargetNamespacesStr))
             {
                 return Array.Empty<string>();
             }
@@ -40,13 +41,23 @@ namespace EmmyLuaSnippetGenerator
         // varName, typeName
         public (string, string)[] GetGlobalVariables()
         {
-            if (string.IsNullOrEmpty(GlobalVariablesStr))
+            if (string.IsNullOrWhiteSpace(GlobalVariablesStr))
             {
                 return Array.Empty<(string, string)>();
             }
 
             var varInfos = GlobalVariablesStr.Split(' ');
             return varInfos.Select(info => info.Split(':')).Select(info => (info[0], info[1])).ToArray();
+        }
+
+        public string[] GetFunctionCompatibleTypes()
+        {
+            if (string.IsNullOrWhiteSpace(FunctionCompatibleTypesStr))
+            {
+                return Array.Empty<string>();
+            }
+
+            return FunctionCompatibleTypesStr.Split(' ');
         }
     }
 
@@ -104,7 +115,7 @@ namespace EmmyLuaSnippetGenerator
                 GUILayout.MinWidth(200)
             );
 
-            GUILayout.Space(20);
+            GUILayout.Space(10);
 
             GUILayout.Label(
                 "要生成注解的全局变量"
@@ -113,6 +124,18 @@ namespace EmmyLuaSnippetGenerator
             );
             _options.GlobalVariablesStr = EditorGUILayout.TextField(
                 _options.GlobalVariablesStr,
+                GUILayout.MinWidth(200)
+            );
+
+            GUILayout.Space(10);
+
+            GUILayout.Label(
+                "使以下类型名兼容Lua function类型"
+                + "\n- 多个类型名用空格分隔"
+                + "\n- 例如: System.Action FairyGUI.EventCallback0"
+            );
+            _options.FunctionCompatibleTypesStr = EditorGUILayout.TextField(
+                _options.FunctionCompatibleTypesStr,
                 GUILayout.MinWidth(200)
             );
 
