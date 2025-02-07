@@ -59,6 +59,7 @@ namespace EmmyLuaSnippetGenerator
             "until",
             "while"
         };
+        private static string[] _functionCompatibleTypes;
 
         public static readonly StringBuilder sb = new StringBuilder(1024);
         private static readonly StringBuilder tempSb = new StringBuilder(1024);
@@ -93,6 +94,8 @@ namespace EmmyLuaSnippetGenerator
             {
                 var set = CollectAllExportType();
                 exportTypeList.AddRange(set);
+
+                _functionCompatibleTypes = _options.GetFunctionCompatibleTypes();
 
                 HandleExtensionMethods();
 
@@ -417,7 +420,7 @@ namespace EmmyLuaSnippetGenerator
 
                 string fieldTypeName = fieldInfo.FieldType.ToLuaTypeName();
 
-                sb.AppendLine(string.Format("---@field {0} {1}", fieldInfo.Name, fieldTypeName));
+                sb.AppendLine(string.Format("---@field {0} {1}", fieldInfo.Name, fieldTypeName.MakeLuaFunctionCompatible()));
             }
 
             PropertyInfo[] publicInstancePropertyInfo =
@@ -442,8 +445,9 @@ namespace EmmyLuaSnippetGenerator
                     continue;
                 }
 
-                Type propertyType = propertyInfo.PropertyType;
-                sb.AppendLine(string.Format("---@field {0} {1}", propertyInfo.Name, propertyType.ToLuaTypeName()));
+                string propertyTypeName = propertyInfo.PropertyType.ToLuaTypeName();
+
+                sb.AppendLine(string.Format("---@field {0} {1}", propertyInfo.Name, propertyTypeName.MakeLuaFunctionCompatible()));
             }
 
             if (_options.InferGenericFieldType)
@@ -770,7 +774,7 @@ namespace EmmyLuaSnippetGenerator
                     tempSb.Append(string.Format("{0}, ", parameterName));
                 }
 
-                sb.AppendLine(string.Format("---@param {0} {1}", parameterName, parameterTypeName));
+                sb.AppendLine(string.Format("---@param {0} {1}", parameterName, parameterTypeName.MakeLuaFunctionCompatible()));
             }
 
             //return
@@ -783,7 +787,7 @@ namespace EmmyLuaSnippetGenerator
 
             if (returnType != null && returnType != typeof(void))
             {
-                sb.Append(returnType.ToLuaTypeName());
+                sb.Append(returnType.ToLuaTypeName().MakeLuaFunctionCompatible());
             }
 
             for (int i = 0; i < outOrRefParameterInfoList.Count; i++)
@@ -832,10 +836,11 @@ namespace EmmyLuaSnippetGenerator
 
         #endregion
 
-        private static bool TypeIsExport(Type type)
+        private static string MakeLuaFunctionCompatible(this string typeName)
         {
-            return exportTypeList.Contains(type) || type == typeof(string) ||
-                               luaNumberTypeSet.Contains(type) || type == typeof(bool);
+            return _functionCompatibleTypes.Contains(typeName)
+                ? typeName + " | function"
+                : typeName;
         }
 
         private static bool keepStringTypeName;

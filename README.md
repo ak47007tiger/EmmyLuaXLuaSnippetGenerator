@@ -20,6 +20,7 @@
 
 - [支持推理泛型字段类型的功能.](#泛型)
 - [支持CS.前缀alias的生成.](#前缀)
+- [允许C#函数类型与Lua Function类型兼容.](#函数兼容)
 - [支持将类型注解文件生成为多个, 提升编辑器中类型推断的性能.](#性能)
 - [支持全局变量生成](#全局)和xLua的typeof函数生成.
 - [编辑器内的简易GUI工具](#设置), 允许将生成注解的选项保存为本地配置文件, 免去需要修改源代码的麻烦.
@@ -27,9 +28,7 @@
 ### 问题修复
 
 - 修复部分静态函数仍会生成self参数的问题.
-
 - 修复泛型类型信息尾缀清除错误的问题.
-
 - 不再生成匿名类型的注解.
 
   
@@ -79,6 +78,27 @@
 项目中的部分全局变量可能从CSharp端设置, Lua无法识别它们. 在本配置中设置你项目中用到的全局变量及类型, 防止Lua频繁提示未定义字段的warning. 格式为`变量名:类型名`, 多个组用空格分隔. 如:
 
 `UNITY_EDITOR:boolean DEBUG_LEVEL:number`
+
+<h1 id="函数兼容"></h1>
+
+### 使以下类型名兼容Lua function类型
+
+C#中的一些函数类型(如`System.Action`)和Lua的`function`类型间没有默认的隐式转换. 尽管xLua能够处理它们, 但类型系统可能会提示warning:
+
+```lua
+local luaFunc = function() end
+
+---@type System.Action
+local csharpFunc
+
+csharpFunc = luaFunc -- cause warning: cannot convert type "function" to "System.Action"
+```
+
+你可以开启本选项以允许类型与Lua function兼容. 在文本框中输入你想兼容Lua function的类型全名, 多个类型名用空格分隔:
+
+`System.Action FairyGUI.EventCallback0`
+
+程序将会以交联类型`t | function`的形式来处理你填写的类型名, 所以你不会因为这些兼容而丢失该类型原本的字段信息.
 
 <h1 id="前缀"></h1>
 
