@@ -89,23 +89,37 @@ namespace EmmyLuaSnippetGenerator
 
             GUILayout.Label(
                 "配置文件的存放路径"
-                + "\n- 提供绝对目录, 不要指定文件名"
             );
+            EditorGUILayout.BeginHorizontal();
+            GUI.enabled = false;
             SettingOptions.SaveRootPath = EditorGUILayout.TextField(
                 SettingOptions.SaveRootPath,
                 GUILayout.MinWidth(200)
             );
+            GUI.enabled = true;
+            if (GUILayout.Button("...", GUILayout.Width(50)))
+            {
+                SettingOptions.SaveRootPath = EditorUtility.OpenFolderPanel("选择配置文件存放路径", "", "");
+            };
+            EditorGUILayout.EndHorizontal();
 
             GUILayout.Space(10);
 
             GUILayout.Label(
                 "生成类型注解文件的路径"
-                + "\n- 提供以\\结尾的绝对目录, 不要指定文件名"
             );
+            EditorGUILayout.BeginHorizontal();
+            GUI.enabled = false;
             _options.GeneratePath = EditorGUILayout.TextField(
                 _options.GeneratePath,
                 GUILayout.MinWidth(200)
             );
+            GUI.enabled = true;
+            if (GUILayout.Button("...", GUILayout.Width(50)))
+            {
+                _options.GeneratePath = EditorUtility.OpenFolderPanel("选择生成类型注解文件路径", "", "");
+            };
+            EditorGUILayout.EndHorizontal();
 
             GUILayout.Space(10);
 

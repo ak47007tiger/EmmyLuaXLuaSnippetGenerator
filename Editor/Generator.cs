@@ -78,13 +78,6 @@ namespace EmmyLuaSnippetGenerator
             }
 
             _options = loaded;
-
-            if (_options.GeneratePath == null || !_options.GeneratePath.EndsWith("\\"))
-            {
-                Debug.LogError($"错误: 你指定的生成路径 {_options.GeneratePath} 没有以\\结尾.");
-                return;
-            }
-
             if (!Directory.Exists(_options.GeneratePath))
             {
                 Directory.CreateDirectory(_options.GeneratePath);
@@ -132,12 +125,6 @@ namespace EmmyLuaSnippetGenerator
             }
 
             _options = loaded;
-
-            if (_options.GeneratePath == null || !_options.GeneratePath.EndsWith("\\"))
-            {
-                Debug.LogError($"错误: 你指定的生成路径 {_options.GeneratePath} 没有以\\结尾.");
-                return;
-            }
 
             if (!Directory.Exists(_options.GeneratePath))
             {
@@ -333,7 +320,7 @@ namespace EmmyLuaSnippetGenerator
             {
                 if (writer == null)
                 {
-                    fileName = _options.GeneratePath + "TypeHint_" + fileCount + ".lua";
+                    fileName = _options.GeneratePath + "/" + "TypeHint_" + fileCount + ".lua";
                     writer = new StreamWriter(fileName);
                     writer.WriteLine("---@meta");
                     writer.WriteLine("");
