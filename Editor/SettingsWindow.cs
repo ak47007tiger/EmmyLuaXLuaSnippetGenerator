@@ -26,7 +26,7 @@ namespace EmmyLuaSnippetGenerator
                 : _saveRootPath;
             set => _saveRootPath = value;
         }
-        public static string SavePath => Path.Combine(SaveRootPath, @"EmmyLuaSnippetToolData\config.xml");
+        public static string SavePath => Path.Combine(SaveRootPath, "EmmyLuaSnippetToolData", "config.xml");
 
         public string[] GetTargetNamespaces()
         {
