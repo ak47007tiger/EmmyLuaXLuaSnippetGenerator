@@ -652,20 +652,20 @@ namespace EmmyLuaSnippetGenerator
             {
                 ParameterInfo parameterInfo = parameterInfos[i];
                 string parameterName = parameterInfo.Name;
-                string parameterTypeName = parameterInfo.ParameterType.ToLuaTypeName();
+                string parameterTypeName = parameterInfo.ParameterType.ToLuaTypeName().MakeLuaFunctionCompatible();
                 if (parameterInfo.IsOut)
                 {
                     parameterName = "out_" + parameterName;
                     outOrRefParameterInfoList.Add(parameterInfo);
 
-                    parameterTypeName = parameterInfo.ParameterType.GetElementType().ToLuaTypeName();
+                    parameterTypeName = parameterInfo.ParameterType.GetElementType().ToLuaTypeName().MakeLuaFunctionCompatible();
                 }
                 else if (parameterInfo.ParameterType.IsByRef)
                 {
                     parameterName = "ref_" + parameterName;
                     outOrRefParameterInfoList.Add(parameterInfo);
 
-                    parameterTypeName = parameterInfo.ParameterType.GetElementType().ToLuaTypeName();
+                    parameterTypeName = parameterInfo.ParameterType.GetElementType().ToLuaTypeName().MakeLuaFunctionCompatible();
                 }
 
                 // write self parameter
